@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stash</title>
+<meta name="description" content="Save pictures and videos from Pinterest, Instagram and X to your phone.">
+<meta name="theme-color" content="#0a0e0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stash">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  /* Design tokens and components follow the Cairn design system. */
+  :root {
+    color-scheme: dark;
+    --ink: #070a08; --base: #0a0e0b; --panel: #0e1310; --panel-2: #121814;
+    --line: #1d2620; --line-strong: #2a352d;
+    --fg: #e9eee5; --soft: #b5bdb2; --muted: #858e84; --dim: #566057;
+    --lime: #d7f25c; --lime-hover: #e2fa70; --lime-ink: #11160a; --rose: #f07a6a;
+    --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; background: var(--base); }
+  body {
+    margin: 0; min-height: 100vh; color: var(--fg); font: 400 16px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--base);
+    background-image:
+      radial-gradient(60% 50% at 70% 20%, rgb(215 242 92 / 0.06), transparent 70%),
+      linear-gradient(to right, rgb(255 255 255 / 0.028) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.028) 1px, transparent 1px);
+    background-size: 100% 100%, 64px 64px, 64px 64px;
+    background-repeat: no-repeat, repeat, repeat;
+  }
+  ::selection { background: var(--lime); color: var(--lime-ink); }
+  :focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .label {
+    font: 500 10.5px/1.4 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+  }
+  .label.accent { color: var(--lime); }
+  .dot { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--lime); }
+  .pulse { animation: pulse-soft 2.2s ease-in-out infinite; }
+
+  /* Capsule nav */
+  .top { display: flex; justify-content: center; padding: calc(16px + env(safe-area-inset-top)) 16px 0; }
+  .capsule {
+    display: flex; align-items: center; gap: 12px; width: 100%; max-width: 1072px; min-height: 52px;
+    padding: 8px 18px; border: 1px solid var(--line); border-radius: 999px;
+    background: rgb(7 10 8 / 0.7); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+  .logo-tile {
+    display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--lime);
+    box-shadow: 0 0 24px -6px rgb(215 242 92 / 0.6);
+  }
+  .logo-tile i { width: 10px; height: 10px; border-radius: 3px; background: var(--lime-ink); }
+  .wordmark { font: 600 13px/1 var(--mono); letter-spacing: 0.28em; }
+  .capsule-note { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 13px; color: var(--soft); }
+
+  /* Page */
+  main { max-width: 1120px; margin: 0 auto; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+  .hero { display: grid; gap: 24px; padding-top: 28px; }
+  .intro { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .intro .label { margin-bottom: 14px; }
+  h1 { margin: 0; font-size: clamp(42px, 13vw, 76px); font-weight: 700; line-height: 0.98; letter-spacing: -0.045em; isolation: isolate; }
+  .word { display: inline-block; }
+  .highlight { position: relative; display: inline-block; margin-left: 12px; color: var(--lime-ink); }
+  .highlight::before {
+    content: ""; position: absolute; inset: 4px -12px; z-index: -1; background: var(--lime); transform: rotate(-1.5deg);
+  }
+  .lead { max-width: 32rem; margin: 18px 0 0; font-size: 17px; line-height: 1.6; color: var(--muted); }
+  .sites { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+
+  .panel {
+    border: 1px solid var(--line); border-radius: 18px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.018), transparent 40%), var(--panel);
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 18px; border-bottom: 1px solid var(--line);
+  }
+  .panel-head .label { display: flex; align-items: center; gap: 8px; }
+  .panel-body { padding: 18px; }
+  .workspace { display: grid; align-content: start; gap: 14px; min-width: 0; animation: rise 0.5s 120ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .tool { box-shadow: 0 40px 120px -40px rgb(0 0 0 / 0.9); }
+
+  label.label { display: block; margin-bottom: 10px; }
+  textarea {
+    display: block; width: 100%; min-height: 104px; padding: 14px; resize: vertical;
+    font: 400 16px/1.5 var(--sans); color: var(--fg); /* 16px stops iPhone zooming on focus */
+    background: rgb(7 10 8 / 0.6); border: 1px solid var(--line-strong); border-radius: 12px;
+  }
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { outline: none; border-color: var(--lime); }
+  .actions { display: grid; grid-template-columns: 1fr 1.7fr; gap: 10px; margin-top: 12px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 22px;
+    border: 1px solid transparent; border-radius: 999px; cursor: pointer; text-align: center; text-decoration: none;
+    font: 500 15px/1.2 var(--sans); transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+  }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary { background: var(--lime); color: var(--lime-ink); font-weight: 600; box-shadow: 0 8px 30px -12px rgb(215 242 92 / 0.55); }
+  .btn-ghost { background: rgb(7 10 8 / 0.4); border-color: var(--line-strong); color: var(--fg); }
+  @media (hover: hover) {
+    .btn-primary:hover:not(:disabled) { background: var(--lime-hover); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--muted); background: var(--panel-2); }
+    details summary:hover { color: var(--lime); }
+  }
+  .btn svg { width: 16px; height: 16px; flex: none; }
+
+  #notice { min-height: 21px; margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  #notice:empty { display: none; }
+  #notice.bad { color: var(--rose); }
+
+  /* Download run cards */
+  #results { display: grid; gap: 14px; min-width: 0; }
+  .card { min-width: 0; overflow: hidden; animation: rise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; flex: none;
+    border: 1px solid rgb(215 242 92 / 0.35); border-radius: 6px; background: rgb(215 242 92 / 0.06);
+    font: 500 9.5px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--lime);
+  }
+  .tag.muted { color: var(--muted); border-color: var(--line-strong); background: transparent; }
+  .tag.bad { color: var(--rose); border-color: rgb(240 122 106 / 0.35); background: rgb(240 122 106 / 0.06); }
+  .name { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .error { margin: 6px 0 0; font-size: 14.5px; color: var(--rose); }
+
+  .steps { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+  .step { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
+  .step i { width: 13px; height: 13px; flex: none; border: 1px dashed var(--dim); border-radius: 50%; }
+  .step span { flex: 1; min-width: 0; }
+  .step b { font: 500 9px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .step.active { color: var(--fg); }
+  .step.active i { border-color: var(--lime); animation: pulse-soft 2.2s ease-in-out infinite; }
+  .step.active b { color: var(--lime); }
+  .step.complete { color: var(--fg); }
+  .step.complete i { border: 0; background: var(--lime); }
+
+  .track { position: relative; height: 2px; margin-top: 16px; overflow: hidden; background: var(--line-strong); }
+  .track div { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--lime); transition: width 0.3s; }
+  .track.scanning div { width: 33%; animation: scan 1.6s ease-in-out infinite; }
+
+  .item { margin-top: 16px; }
+  .item + .item { padding-top: 16px; border-top: 1px solid var(--line); }
+  .item .label { display: block; margin-bottom: 8px; }
+  .media {
+    display: block; width: 100%; max-height: 62vh; object-fit: contain;
+    border: 1px solid var(--line-strong); border-radius: 12px; background: var(--ink);
+  }
+  .save { display: grid; gap: 8px; margin-top: 12px; }
+  .save.pair { grid-template-columns: 1fr 1fr; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+  .stats div { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--line); }
+  .stats div:last-child { border-right: 0; }
+  .stats dt { font: 500 9px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .stats dd { margin: 3px 0 0; font: 600 12px/1.3 var(--mono); text-transform: uppercase; }
+  .stats .lime { color: var(--lime); }
+  dl { margin: 0; }
+
+  /* Journey and help */
+  .journey { margin-top: 28px; padding: 22px 18px; }
+  h2 { margin: 10px 0 0; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
+  .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
+  .strip li::before { content: ""; display: block; height: 3px; border-radius: 2px; background: var(--lime); }
+  .strip span { display: block; margin-top: 10px; font: 500 9.5px/1.3 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .help { display: grid; gap: 14px; margin-top: 14px; }
+  details { padding: 0 18px; }
+  summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px;
+    cursor: pointer; list-style: none; font-weight: 600;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; font: 500 18px/1 var(--mono); color: var(--lime); }
+  details[open] summary::after { content: "\2212"; }
+  details p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.6; color: var(--muted); }
+  details strong { color: var(--fg); font-weight: 600; }
+
+  footer {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line);
+  }
+  footer .label { font-size: 9.5px; }
+
+  @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
+
+  @media (min-width: 900px) {
+    main { padding-left: 24px; padding-right: 24px; }
+    .hero { grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: start; padding-top: 72px; }
+    .intro { position: sticky; top: 40px; }
+    .word { display: block; width: fit-content; }
+    .highlight { margin: 0 0 0 12px; }
+    .lead { margin-top: 30px; }
+    .journey { margin-top: 56px; padding: 28px; }
+    .help { grid-template-columns: 1fr 1fr; align-items: start; }
+    footer { margin-top: 40px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <nav class="capsule" aria-label="Main">
+    <a class="logo" href="/" aria-label="Stash home">
+      <span class="logo-tile"><i></i></span>
+      <span class="wordmark">STASH</span>
+    </a>
+    <span class="capsule-note"><span class="dot"></span> Online</span>
+  </nav>
+</header>
+
+<main>
+  <div class="hero">
+    <section class="intro">
+      <div class="label accent">Pictures &amp; videos / 01</div>
+      <h1><span class="word">Paste.</span> <span class="word">Preview.</span> <span class="word highlight">Save.</span></h1>
+      <p class="lead">Save pictures and videos from Pinterest, Instagram and X straight to your phone. No sign-in needed.</p>
+      <div class="sites" aria-label="Supported sites">
+        <span class="tag muted">Pinterest</span><span class="tag muted">Instagram</span><span class="tag muted">X / Twitter</span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel tool">
+        <div class="panel-head">
+          <div class="label" style="color:var(--soft)"><span class="dot pulse"></span> New download</div>
+          <div class="label">Photo · Video</div>
+        </div>
+        <form id="form" class="panel-body">
+          <label class="label" for="links">Post link</label>
+          <textarea id="links" placeholder="Paste a Pinterest, Instagram or X link" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+          <div class="actions">
+            <button type="button" id="paste" class="btn btn-ghost">Paste</button>
+            <button type="submit" id="go" class="btn btn-primary">
+              Get media
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
+            </button>
+          </div>
+          <p id="notice" role="status"></p>
+        </form>
+      </section>
+      <section id="results" aria-label="Downloads" aria-live="polite"></section>
+    </div>
+  </div>
+
+  <section class="panel journey">
+    <div class="label accent">How it works</div>
+    <h2>From link to camera roll</h2>
+    <ol class="strip">
+      <li><span>Paste</span></li>
+      <li><span>Fetch</span></li>
+      <li><span>Preview</span></li>
+      <li><span>Save</span></li>
+    </ol>
+  </section>
+
+  <div class="help">
+    <details class="panel">
+      <summary>Add to your home screen</summary>
+      <p><strong>iPhone:</strong> open this page in Safari, tap Share, then Add to Home Screen.</p>
+      <p><strong>Android:</strong> open this page in Chrome, tap the ⋮ menu, then Add to Home screen or Install app. After that, you can use Share in the Pinterest, Instagram or X app and pick Stash.</p>
+    </details>
+    <details class="panel">
+      <summary>Where do my files go?</summary>
+      <p><strong>Save</strong> puts the file in your downloads (the Files app on iPhone).</p>
+      <p><strong>Photos</strong> opens your phone's share menu. On iPhone, choose Save Image or Save Video to put it in Photos.</p>
+      <p>Only public posts work. Private accounts and posts that need a login can't be saved.</p>
+    </details>
+  </div>
+
+  <footer>
+    <span class="label">© 2026 Stash / Not affiliated with Pinterest, Instagram or X</span>
+    <span class="label">Respect creators' rights</span>
+  </footer>
+</main>
+
+<script>
+const form = document.getElementById("form");
+const box = document.getElementById("links");
+const go = document.getElementById("go");
+const notice = document.getElementById("notice");
+const results = document.getElementById("results");
+const STEPS = ["Finding the post", "Fetching the media", "Ready to save"];
+let runNumber = 0;
+
+function say(text, bad = false) {
+  notice.textContent = text;
+  notice.classList.toggle("bad", bad);
+}
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+document.getElementById("paste").addEventListener("click", async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) return say("Your clipboard is empty.");
+    box.value = text.trim();
+    say("");
+  } catch {
+    box.focus();
+    say("Press and hold in the box, then choose Paste.");
+  }
+});
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  const text = box.value.trim();
+  if (!text) { box.focus(); return say("Paste a Pinterest, Instagram or X link first.", true); }
+
+  go.disabled = true;
+  say("Starting…");
+  // A freshly restarted server can take a moment to answer.
+  const slow = setTimeout(() => say("Waking up the server. This can take up to a minute…"), 4000);
+  try {
+    const response = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await response.json();
+    if (!response.ok) return say(data.error || "Something went wrong. Please try again.", true);
+    box.value = "";
+    say("");
+    data.jobs.forEach(addCard);
+  } catch {
+    say("Could not reach the server. Check your connection and try again.", true);
+  } finally {
+    clearTimeout(slow);
+    go.disabled = false;
+  }
+});
+
+function siteOf(link) {
+  if (/instagram\.com|instagr\.am/i.test(link)) return "Instagram";
+  if (/x\.com|twitter\.com/i.test(link)) return "X";
+  return "Pinterest";
+}
+
+function addCard(job) {
+  runNumber += 1;
+  const card = el("article", "panel card");
+
+  const head = el("div", "panel-head");
+  const label = el("div", "label");
+  const dot = el("span", "dot pulse");
+  label.append(dot, `${siteOf(job.link)} / ${String(runNumber).padStart(2, "0")}`);
+  const tag = el("span", "tag", "Working");
+  head.append(label, tag);
+
+  const body = el("div", "panel-body");
+  const name = el("p", "name", job.link);
+  const steps = el("ol", "steps");
+  const rows = STEPS.map(text => {
+    const row = el("li", "step");
+    row.append(el("i"), el("span", "", text), el("b", "", "Pending"));
+    steps.append(row);
+    return row;
+  });
+  const track = el("div", "track scanning");
+  track.setAttribute("aria-hidden", "true");
+  const fill = el("div");
+  track.append(fill);
+  body.append(name, steps, track);
+  card.append(head, body);
+  results.prepend(card);
+
+  poll(job.id, { card, dot, tag, body, name, steps, rows, track, fill }, 0);
+}
+
+function setSteps(ui, active, activeText) {
+  ui.rows.forEach((row, i) => {
+    const state = i < active ? "complete" : i === active ? "active" : "pending";
+    row.className = `step ${state}`;
+    row.lastChild.textContent = i === active && activeText ? activeText : state;
+  });
+}
+
+async function poll(id, ui, failures) {
+  let job;
+  try {
+    const response = await fetch(`/api/jobs/${id}`);
+    if (response.status === 404) return fail(ui, "This download expired. Please paste the link again.");
+    job = await response.json();
+  } catch {
+    if (failures >= 10) return fail(ui, "Lost connection to the server. Please try again.");
+    return setTimeout(() => poll(id, ui, failures + 1), 2000);
+  }
+
+  if (job.state === "failed") return fail(ui, job.error);
+  if (job.state === "ready") return showReady(job, ui);
+  if (job.progress > 0) {
+    const percent = Math.round(job.progress * 100);
+    setSteps(ui, 1, `${percent}%`);
+    ui.track.classList.remove("scanning");
+    ui.fill.style.width = `${percent}%`;
+  } else {
+    setSteps(ui, job.state === "working" ? 0 : -1);
+  }
+  setTimeout(() => poll(id, ui, 0), 700);
+}
+
+function fail(ui, message) {
+  ui.dot.classList.remove("pulse");
+  ui.dot.style.background = "var(--rose)";
+  ui.tag.textContent = "Failed";
+  ui.tag.classList.add("bad");
+  ui.steps.remove();
+  ui.track.remove();
+  ui.body.append(el("p", "error", message));
+}
+
+// Drops the "[site-id-n].ext" ending from the saved file's name.
+function displayName(file) {
+  return file.replace(/\s*\[[a-z]+-[\w-]+\]\.\w+$/i, "");
+}
+
+function formatSize(bytes) {
+  return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function showReady(job, ui) {
+  ui.dot.classList.remove("pulse");
+  ui.tag.textContent = "Ready";
+  ui.name.textContent = displayName(job.files[0].name);
+  ui.steps.remove();
+  ui.track.remove();
+
+  job.files.forEach((file, index) => {
+    const fileUrl = `/api/jobs/${job.id}/file/${index}`;
+    const item = el("div", "item");
+    if (job.files.length > 1) {
+      item.append(el("span", "label", `${file.kind === "video" ? "Video" : "Picture"} ${index + 1} of ${job.files.length}`));
+    }
+    let media;
+    if (file.kind === "video") {
+      media = el("video", "media");
+      media.src = `${fileUrl}?inline=1#t=0.1`;
+      media.controls = true;
+      media.playsInline = true;
+      media.preload = "metadata";
+    } else {
+      media = el("img", "media");
+      media.src = `${fileUrl}?inline=1`;
+      media.alt = `${file.kind === "video" ? "Video" : "Picture"} ${index + 1}`;
+      media.loading = "lazy";
+    }
+    const save = el("div", "save");
+    const link = el("a", "btn btn-primary", "Save");
+    link.href = fileUrl;
+    link.download = file.name;
+    save.append(link);
+    const message = el("p", "error");
+    message.hidden = true;
+    if (addShareButton(save, fileUrl, file, message)) save.classList.add("pair");
+    item.append(media, save, message);
+    ui.body.append(item);
+  });
+
+  const kinds = new Set(job.files.map(file => file.kind));
+  const type = kinds.size > 1 ? "Mixed" : kinds.has("video") ? "Video" : "Picture";
+  const total = job.files.reduce((sum, file) => sum + file.size, 0);
+  const stats = el("dl", "stats");
+  [["Type", type], ["Files", `${job.files.length} · ${formatSize(total)}`], ["Status", "Ready", "lime"]].forEach(([term, value, tone]) => {
+    const cell = el("div");
+    cell.append(el("dt", "", term), el("dd", tone || "", value));
+    stats.append(cell);
+  });
+  ui.card.append(stats);
+}
+
+function mimeOf(file) {
+  const ext = file.name.split(".").pop().toLowerCase();
+  return { mp4: "video/mp4", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", heic: "image/heic" }[ext] || "application/octet-stream";
+}
+
+function addShareButton(parent, fileUrl, meta, message) {
+  const type = mimeOf(meta);
+  const probe = new File([], meta.name, { type });
+  if (!navigator.canShare || !navigator.canShare({ files: [probe] })) return false;
+
+  const label = "Photos";
+  const button = el("button", "btn btn-ghost", label);
+  button.type = "button";
+  button.setAttribute("aria-label", "Save to Photos or share");
+  let file = null;
+  button.addEventListener("click", async () => {
+    message.hidden = true;
+    try {
+      if (!file) {
+        button.disabled = true;
+        button.textContent = "Getting…";
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error("expired");
+        file = new File([await response.blob()], meta.name, { type });
+        button.disabled = false;
+        button.textContent = label;
+      }
+      await navigator.share({ files: [file] });
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = label;
+      if (error.name === "NotAllowedError") {
+        // Phones may block sharing after a long fetch. The file is held now, so a second tap works.
+        message.textContent = "Ready. Tap Photos again.";
+        message.style.color = "var(--soft)";
+        message.hidden = false;
+      } else if (error.name !== "AbortError") {
+        message.textContent = "Couldn't get the file. Try Save instead.";
+        message.style.color = "";
+        message.hidden = false;
+      }
+    }
+  });
+  parent.append(button);
+  return true;
+}
+
+// Android's share menu opens this page with the shared link in the address.
+const shared = new URLSearchParams(location.search);
+const sharedText = [shared.get("url"), shared.get("text"), shared.get("title")].filter(Boolean).join(" ");
+if (sharedText) {
+  box.value = sharedText;
+  history.replaceState(null, "", "/");
+  form.requestSubmit();
+}
+</script>
+</body>
+</html>
