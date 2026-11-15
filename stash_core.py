@@ -73,8 +73,12 @@ def _ffmpeg_path():
 def _friendly(error):
     text = str(error)
     lowered = text.lower()
+    if "rate-limit" in lowered or "rate limit" in lowered:
+        return "The site is limiting requests: wait a few minutes and try again"
     if "empty media response" in lowered or "login" in lowered or "registered users" in lowered:
-        return "Couldn't open this post: it may be private, or the site is limiting requests. Try again later."
+        # Instagram answers this way for private accounts and for accounts with an age limit.
+        return ("Only visible to logged-in users: the account is private or has an age limit, "
+                "so this post can't be saved")
     if "http error 404" in lowered or "unable to extract" in lowered or "not found" in lowered:
         return "Post not found: it may be deleted or private"
     if "http error 429" in lowered:
